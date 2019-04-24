@@ -1187,6 +1187,12 @@ typedef NS_ERROR_ENUM(GCDAsyncSocketErrorDomain, GCDAsyncSocketError) {
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(nullable NSError *)err;
 
 /**
+ *socket连接失败-仅仅用于埋点
+ *
+ *
+**/
+- (void)socketConnectFailed:(GCDAsyncSocket *)sock withError:(nullable NSError *)err;
+/**
  * Called after the socket has successfully completed SSL/TLS negotiation.
  * This method is not called unless you use the provided startTLS method.
  * 

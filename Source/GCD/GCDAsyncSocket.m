@@ -2613,6 +2613,8 @@ enum GCDAsyncSocketConfig
 	}
 	
 	[self endConnectTimeout];
+    //ha!!!:dns解析失败；抛出 连接失败
+    [self callDelegateConnectFailedWithError:error];
 	[self closeWithError:error];
 }
 
@@ -2694,6 +2696,7 @@ enum GCDAsyncSocketConfig
 #pragma clang diagnostic warning "-Wimplicit-retain-self"
         
         int result = connect(socketFD, (const struct sockaddr *)[address bytes], (socklen_t)[address length]);
+        //这里获取到socket连接的结果
         int err = errno;
         
         __strong GCDAsyncSocket *strongSelf = weakSelf;
@@ -3068,7 +3071,8 @@ enum GCDAsyncSocketConfig
 		// That is, socket was disconnected, or connection has already timed out.
 		return;
 	}
-	
+    //ha!!!:这里 回调 -建立连接失败回调
+    [self callDelegateConnectFailedWithError:error];
 	[self closeWithError:error];
 }
 
@@ -3145,6 +3149,8 @@ enum GCDAsyncSocketConfig
 	LogTrace();
 	
 	[self endConnectTimeout];
+    //ha!!!:添加连接超时回调
+    [self callDelegateConnectFailedWithError:[self connectTimeoutError]];
 	[self closeWithError:[self connectTimeoutError]];
 }
 
@@ -3420,6 +3426,23 @@ enum GCDAsyncSocketConfig
 	{
 		[self closeWithError:nil];
 	}
+}
+
+/**
+ 调用socket连接失败代理
+ 
+ @param error 包括dns寻址，连接超时，以及其他NSPOSIXErrorDomain错误
+ */
+- (void)callDelegateConnectFailedWithError:(NSError *)error {
+    __strong id theDelegate = delegate;
+    __strong id theSelf = self;
+    
+    if (delegateQueue && [theDelegate respondsToSelector: @selector(socketConnectFailed:withError:)])
+    {
+        dispatch_async(delegateQueue, ^{ @autoreleasepool {
+            [theDelegate socketConnectFailed:theSelf withError:error];
+        }});
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
