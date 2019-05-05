@@ -2614,8 +2614,8 @@ enum GCDAsyncSocketConfig
 	
 	[self endConnectTimeout];
     //ha!!!:dns解析失败；抛出 连接失败
-    [self callDelegateConnectFailedWithError:error];
-	[self closeWithError:error];
+    
+	[self closeWithError:[self configConnectError:error]];
 }
 
 - (BOOL)bindSocket:(int)socketFD toInterface:(NSData *)connectInterface error:(NSError **)errPtr
@@ -3072,8 +3072,7 @@ enum GCDAsyncSocketConfig
 		return;
 	}
     //ha!!!:这里 回调 -建立连接失败回调
-    [self callDelegateConnectFailedWithError:error];
-	[self closeWithError:error];
+	[self closeWithError:[self configConnectError:error]];
 }
 
 - (void)startConnectTimeout:(NSTimeInterval)timeout
@@ -3150,8 +3149,7 @@ enum GCDAsyncSocketConfig
 	
 	[self endConnectTimeout];
     //ha!!!:添加连接超时回调
-    [self callDelegateConnectFailedWithError:[self connectTimeoutError]];
-	[self closeWithError:[self connectTimeoutError]];
+	[self closeWithError:[self configConnectError:[self connectTimeoutError]]];
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3429,20 +3427,15 @@ enum GCDAsyncSocketConfig
 }
 
 /**
- 调用socket连接失败代理
- 
- @param error 包括dns寻址，连接超时，以及其他NSPOSIXErrorDomain错误
+ 2019.4.30 标识为连接错误；区分连接断开错误
+
+ @param err <#err description#>
+ @return <#return value description#>
  */
-- (void)callDelegateConnectFailedWithError:(NSError *)error {
-    __strong id theDelegate = delegate;
-    __strong id theSelf = self;
-    
-    if (delegateQueue && [theDelegate respondsToSelector: @selector(socketConnectFailed:withError:)])
-    {
-        dispatch_async(delegateQueue, ^{ @autoreleasepool {
-            [theDelegate socketConnectFailed:theSelf withError:error];
-        }});
-    }
+- (NSError *)configConnectError:(NSError *)err {
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionaryWithDictionary:err.userInfo];
+    [userInfo setObject:@{@"isConnect":@(YES)} forKey:NSHelpAnchorErrorKey];
+    return [NSError errorWithDomain:err.domain code:err.code userInfo:userInfo];
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
